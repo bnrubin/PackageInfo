@@ -1,0 +1,15 @@
+#!/bin/bash
+
+DIR=/home/stdin/bot/data/apt
+
+for DIST in "$DIR"/*.list; do
+    test -h $DIST && continue
+    DIST=${DIST:${#DIR}}
+    DIST=${DIST/.list}
+    touch "$DIR/$DIST.status"
+    mkdir -p "$DIR/$DIST/partial"
+    apt-get -qq -o "Dir::State::Lists=$DIR/$DIST" \
+                -o "Dir::etc::sourcelist=$DIR/$DIST.list" \
+                -o "Dir::State::status=$DIR/$DIST.status" \
+                -o "Dir::Cache=$DIR/cache" update
+done
