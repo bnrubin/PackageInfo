@@ -95,6 +95,82 @@ class PackageInfo(callbacks.Plugin):
 
     find = wrap(find, ['text', optional('text')])
 
+    def addressed(self, irc, msg, channel):
+        nick = irc.nick
+        prefixChars=self.registryValue("prefixchar", channel)
+        nicks=None
+        prefixStrings=None
+        whenAddressedByNick=None
+        whenAddressedByNickAtEnd=None
+
+        def get(group):
+            if ircutils.isChannel(target):
+                group = group.get(target)
+            return group()
+        def stripPrefixStrings(payload):
+            for prefixString in prefixStrings:
+                if payload.startswith(prefixString):
+                    payload = payload[len(prefixString):].lstrip()
+            return payload
+
+        (target, payload) = msg.args
+        if not payload:
+            return ''
+        if prefixChars is None:
+            prefixChars = get(conf.supybot.reply.whenAddressedBy.chars)
+        if whenAddressedByNick is None:
+            whenAddressedByNick = get(conf.supybot.reply.whenAddressedBy.nick)
+        if whenAddressedByNickAtEnd is None:
+            r = conf.supybot.reply.whenAddressedBy.nick.atEnd
+            whenAddressedByNickAtEnd = get(r)
+        if prefixStrings is None:
+            prefixStrings = get(conf.supybot.reply.whenAddressedBy.strings)
+        for string in prefixStrings:
+            if payload.startswith(string):
+                return stripPrefixStrings(payload)
+        if payload[0] in prefixChars:
+            return payload[1:].strip()
+        if nicks is None:
+            nicks = get(conf.supybot.reply.whenAddressedBy.nicks)
+            nicks = map(ircutils.toLower, nicks)
+        else:
+            nicks = list(nicks)
+        nicks.insert(0, ircutils.toLower(nick))
+        if ircutils.nickEqual(target, nick):
+            payload = stripPrefixStrings(payload)
+            while payload and payload[0] in prefixChars:
+                payload = payload[1:].lstrip()
+            return payload
+        elif whenAddressedByNick:
+            for nick in nicks:
+                lowered = ircutils.toLower(payload)
+                if lowered.startswith(nick):
+                    try:
+                        (maybeNick, rest) = payload.split(None, 1)
+                        toContinue = False
+                        while not ircutils.isNick(maybeNick, strictRfc=True):
+                            if maybeNick[-1].isalnum():
+                                toContinue = True
+                                break
+                            maybeNick = maybeNick[:-1]
+                        if toContinue:
+                            continue
+                        if ircutils.nickEqual(maybeNick, nick):
+                            return rest
+                        else:
+                            continue
+                    except ValueError:
+                        continue
+                elif whenAddressedByNickAtEnd and lowered.endswith(nick):
+                    rest = payload[:-len(nick)]
+                    possiblePayload = rest.rstrip(' \t,;')
+                    if possiblePayload != rest:
+                        return possiblePayload
+        if conf.supybot.reply.whenNotAddressed():
+            return payload
+        else:
+            return ''
+
     def doPrivmsg(self, irc, msg):
         channel = self.__getChannel(msg.args[0])
         if not channel:
@@ -107,7 +183,7 @@ class PackageInfo(callbacks.Plugin):
         if chr(1) in msg.args[1]: # CTCP
             return
 
-        text = callbacks.addressed(irc.nick.lower(), msg, prefixChars=self.registryValue("prefixchar", channel))
+        text = self.addressed(irc, msg, channel)
         if not text:
             return
         if text[0] in str(conf.supybot.reply.whenAddressedBy.get('chars')):
