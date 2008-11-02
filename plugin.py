@@ -186,10 +186,8 @@ class PackageInfo(callbacks.Plugin):
         text = self.addressed(irc, msg, channel)
         if not text:
             return
-        if text[0] in str(conf.supybot.reply.whenAddressedBy.get('chars')):
+        if msg.args[1][0] in str(conf.supybot.reply.whenAddressedBy.get('chars')):
             return
-        if text[0] == self.registryValue("prefixchar", channel):
-            text = text[1:]
         if text.lower()[:4] not in ("find", "info"):
             return
 
