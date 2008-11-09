@@ -120,5 +120,5 @@ class Apt:
             return("%s (source: %s): %s. In component %s, is %s. Version %s (%s), package size %s kB, installed size %s kB%s" %
                    (maxp['Package'], maxp['Source'] or maxp['Package'], maxp['Description'].split('\n')[0], component(maxp['Section']),
                     maxp['Priority'], maxp['Version'], distro, int(maxp['Size'])/1024, maxp['Installed-Size'], archs))
-        return 'Package %s does not exist in %s' % (pkg, ', '.join(checkdists))
+        return 'Package %s does not exist in %s' % (pkg, checkdists)
                        
