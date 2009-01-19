@@ -1,6 +1,11 @@
 #!/bin/bash
 
-DIR=/home/stdin/bot/data/apt
+if [ -x "$(which apt-file)" ]; then
+    echo "Please install apt-file"
+    exit 1
+fi
+
+DIR=/home/bot/data/apt
 
 for DIST in "$DIR"/*.list; do
     test -h $DIST && continue

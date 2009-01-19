@@ -40,13 +40,13 @@ import os
 import packages
 reload(packages)
 
-+def get_user(msg):
-+    try:
-+        user = ircdb.users.getUser(msg.prefix)
-+    except:
-+        return False
-+    return user
-+
+def get_user(msg):
+    try:
+        user = ircdb.users.getUser(msg.prefix)
+    except:
+        return False
+    return user
+
 
 class PackageInfo(callbacks.Plugin):
     """Lookup package information via apt-cache/apt-file"""
@@ -104,118 +104,65 @@ class PackageInfo(callbacks.Plugin):
 
     find = wrap(find, ['text', optional('text')])
 
-    def addressed(self, irc, msg, channel):
-        nick = irc.nick
-        prefixChars=self.registryValue("prefixchar", channel)
-        nicks=None
-        prefixStrings=None
-        whenAddressedByNick=None
-        whenAddressedByNickAtEnd=None
-
-        def get(group):
-            if ircutils.isChannel(target):
-                group = group.get(target)
-            return group()
-        def stripPrefixStrings(payload):
-            for prefixString in prefixStrings:
-                if payload.startswith(prefixString):
-                    payload = payload[len(prefixString):].lstrip()
-            return payload
-
-        (target, payload) = msg.args
-        if not payload:
-            return ''
-        if prefixChars is None:
-            prefixChars = get(conf.supybot.reply.whenAddressedBy.chars)
-        if whenAddressedByNick is None:
-            whenAddressedByNick = get(conf.supybot.reply.whenAddressedBy.nick)
-        if whenAddressedByNickAtEnd is None:
-            r = conf.supybot.reply.whenAddressedBy.nick.atEnd
-            whenAddressedByNickAtEnd = get(r)
-        if prefixStrings is None:
-            prefixStrings = get(conf.supybot.reply.whenAddressedBy.strings)
-        for string in prefixStrings:
-            if payload.startswith(string):
-                return stripPrefixStrings(payload)
-        if payload[0] in prefixChars:
-            return payload[1:].strip()
-        if nicks is None:
-            nicks = get(conf.supybot.reply.whenAddressedBy.nicks)
-            nicks = map(ircutils.toLower, nicks)
+    def privmsg(self, irc, msg, user):
+        text = msg.args[1]
+        release = self.__getRelease(irc, None, channel, False)
+        if text[0] == self.registryValue("prefixchar"):
+            text = text[1:]
+        if user and text[0] in str(conf.supybot.reply.whenAddressedBy.get('chars')):
+            return
+        if text[:4] == "find":
+            irc.reply(self.Apt.find(text[4:].strip(), release))
         else:
-            nicks = list(nicks)
-        nicks.insert(0, ircutils.toLower(nick))
-        if ircutils.nickEqual(target, nick):
-            payload = stripPrefixStrings(payload)
-            while payload and payload[0] in prefixChars:
-                payload = payload[1:].lstrip()
-            return payload
-        elif whenAddressedByNick:
-            for nick in nicks:
-                lowered = ircutils.toLower(payload)
-                if lowered.startswith(nick):
-                    try:
-                        (maybeNick, rest) = payload.split(None, 1)
-                        toContinue = False
-                        while not ircutils.isNick(maybeNick, strictRfc=True):
-                            if maybeNick[-1].isalnum():
-                                toContinue = True
-                                break
-                            maybeNick = maybeNick[:-1]
-                        if toContinue:
-                            continue
-                        if ircutils.nickEqual(maybeNick, nick):
-                            return rest
-                        else:
-                            continue
-                    except ValueError:
-                        continue
-                elif whenAddressedByNickAtEnd and lowered.endswith(nick):
-                    rest = payload[:-len(nick)]
-                    possiblePayload = rest.rstrip(' \t,;')
-                    if possiblePayload != rest:
-                        return possiblePayload
-        if conf.supybot.reply.whenNotAddressed():
-            return payload
+            irc.reply(self.Apt.info(text[4:].strip(), release))
+
+    def chanmsg(self, irc, msg, user):
+        channel = self.__getChannel(msg.args[0])
+        text = msg.args[1]
+        release = self.__getRelease(irc, None, channel, False)
+        if text[0] != self.registryValue("prefixchar", channel):
+            return
+        text = text[1:]
+        if not text[:4] in ("find", "info"):
+            return
+        if text[:4] == "find":
+            irc.reply(self.Apt.find(text[4:].strip(), release))
         else:
-            return ''
+            irc.reply(self.Apt.info(text[4:].strip(), release))
 
     def doPrivmsg(self, irc, msg):
-        channel = self.__getChannel(msg.args[0])
-        if not channel and get_user(msg):
-            return
-        if not self.registryValue("enabled", channel):
-            return
-        release = self.__getRelease(irc, None, channel, False)
-        if not release:
-            return
         if chr(1) in msg.args[1]: # CTCP
             return
-
-        text = self.addressed(irc, msg, channel)
-        if not text:
+        channel = self.__getChannel(msg.args[0])
+        if not self.registryValue("enabled", channel):
             return
-        if msg.args[1][0] in str(conf.supybot.reply.whenAddressedBy.get('chars')):
+        user = get_user(msg)
+        if channel:
+            self.chanmsg(irc, msg, user)
+        elif user:
             return
-        if text.lower()[:4] not in ("find", "info"):
-            return
-
-        if text.lower()[:4] == "find":
-            irc.reply(self.Apt.find(text[4:].strip(), self.registryValue("defaultRelease", channel)))
-        else:
-            irc.reply(self.Apt.info(text[4:].strip(), self.registryValue("defaultRelease", channel)))
+            self.privmsg(irc, msg, user)
 
     def inFilter(self, irc, msg):
         if not conf.supybot.get("defaultIgnore"):
             return msg
-        if msg.command == "PRIVMSG" and msg.args[0].lower() == irc.nick.lower():
-            recipient, text = msg.args
-            channel = self.__getChannel(msg.args[0])
-            new_text = self.addressed(irc, msg, channel)
-            if new_text:
-                if(irc.nick.lower() == msg.args[0]):
-                    irc = callbacks.ReplyIrcProxy(irc, msg)
-                    self.doPrivmsg(irc, msg)
+        if msg.command != "PRIVMSG":
+            return msg
+        text = msg.args[1]
+        user = get_user(msg)
+        if user:
+            return msg
+        channel = self.__getChannel(msg.args[0])
+        if channel:
+            if text[:5] not in ("!info", "!find", "@info", "@find"):
+                return msg
+        else:
+            if text[:5] in ("info ", "find ", "!info", "!find", "@info", "@find"):
+                irc = callbacks.ReplyIrcProxy(irc, msg)
+                self.doPrivmsg(irc, msg)
+            else:
+                return msg
+
         return msg
 
 Class = PackageInfo

@@ -11,6 +11,9 @@
 # GNU General Public License for more details.
 #
 ###
+import exceptions
+import warnings
+warnings.filterwarnings("ignore", "apt API not stable yet", exceptions.FutureWarning)
 import commands, os, apt
 from email import FeedParser
 
@@ -33,11 +36,12 @@ class Apt:
                                  -o"Dir::etc::sourcelist=%s/%%s.list"\\
                                  -o"Dir::State::status=%s/%%s.status"\\
                                  -o"Dir::Cache=%s/cache"\\
+                                 -o"APT::Architecture=i386"\\
                                  %%s %%s""" % tuple([self.aptdir]*4)
             self.aptfilecommand = """apt-file -s %s/%%s.list -c %s/apt-file/%%s -l search %%s""" % tuple([self.aptdir]*2)
 
     def find(self, pkg, checkdists, filelookup=True):
-        _pkg = ''.join([x for x in pkg.strip().split(None,1)[0] if x.isalnum or x in '.-_+'])
+        _pkg = ''.join([x for x in pkg.strip().split(None,1)[0] if x.isalnum() or x in '.-_+'])
         distro = checkdists
         if len(pkg.strip().split()) > 1:
             distro = ''.join([x for x in pkg.strip().split(None,2)[1] if x.isalnum or x in '.-_+'])
@@ -56,6 +60,9 @@ class Apt:
                     if data[0] == 'E:': # No files in the cache dir
                       self.log.error("Please run the 'update_apt_file' script")
                       return "Cache out of date, please contact the administrator"
+                    if data[0] == "Use" and data[1] == "of":
+                        url = "http://packages.ubuntu.com/search?searchon=contents&keywords=%s&mode=&suite=%s&arch=any" % (urllib.quote(pkg),distro)
+                        return url
                     if len(data) > 5:
                         return "File %s found in %s (and %d others)" % (pkg, ', '.join(data[:5]), len(data)-5)
                     return "File %s found in %s" % (pkg, ', '.join(data))
@@ -69,7 +76,7 @@ class Apt:
 
     def info(self, pkg, checkdists):
         _pkg = ''.join([x for x in pkg.strip().split(None,1)[0] if x.isalnum() or x in '.-_+'])
-        distro = None
+        distro = checkdists
         if len(pkg.strip().split()) > 1:
             distro = ''.join([x for x in pkg.strip().split(None,2)[1] if x.isalnum() or x in '-._+'])
         if not distro:
