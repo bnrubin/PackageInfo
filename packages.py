@@ -20,6 +20,7 @@ def component(arg):
 
 class Apt:
     def __init__(self, plugin):
+        os.environ["LANG"] = "C" # Workaround issues with localized package descriptions
         self.aptdir = plugin.registryValue('aptdir')
         self.distros = []
         self.plugin = plugin

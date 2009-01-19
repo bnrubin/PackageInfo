@@ -35,9 +35,18 @@ import supybot.ircutils as ircutils
 import supybot.callbacks as callbacks
 import supybot.ircutils as ircutils
 import supybot.conf as conf
+import supybot.ircdb as ircdb
 import os
 import packages
 reload(packages)
+
++def get_user(msg):
++    try:
++        user = ircdb.users.getUser(msg.prefix)
++    except:
++        return False
++    return user
++
 
 class PackageInfo(callbacks.Plugin):
     """Lookup package information via apt-cache/apt-file"""
@@ -173,7 +182,7 @@ class PackageInfo(callbacks.Plugin):
 
     def doPrivmsg(self, irc, msg):
         channel = self.__getChannel(msg.args[0])
-        if not channel:
+        if not channel and get_user(msg):
             return
         if not self.registryValue("enabled", channel):
             return
@@ -195,6 +204,19 @@ class PackageInfo(callbacks.Plugin):
             irc.reply(self.Apt.find(text[4:].strip(), self.registryValue("defaultRelease", channel)))
         else:
             irc.reply(self.Apt.info(text[4:].strip(), self.registryValue("defaultRelease", channel)))
+
+    def inFilter(self, irc, msg):
+        if not conf.supybot.get("defaultIgnore"):
+            return msg
+        if msg.command == "PRIVMSG" and msg.args[0].lower() == irc.nick.lower():
+            recipient, text = msg.args
+            channel = self.__getChannel(msg.args[0])
+            new_text = self.addressed(irc, msg, channel)
+            if new_text:
+                if(irc.nick.lower() == msg.args[0]):
+                    irc = callbacks.ReplyIrcProxy(irc, msg)
+                    self.doPrivmsg(irc, msg)
+        return msg
 
 Class = PackageInfo
 
