@@ -11,6 +11,6 @@ for DIST in "$DIR"/*.list; do
     apt-get -qq -o "Dir::State::Lists=$DIR/$DIST" \
                 -o "Dir::etc::sourcelist=$DIR/$DIST.list" \
                 -o "Dir::State::status=$DIR/$DIST.status" \
-                -o "Dir::Cache=$DIR/cache \
+                -o "Dir::Cache=$DIR/cache" \
                 -o "APT::Architecture=i386" update
 done
