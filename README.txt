@@ -9,6 +9,10 @@ Create a new empty directory that will be used for the apt cache.
 In this directory, you create sources.list files for every release you
 want to search. The name of the file is important, since the filename (without
 the .list suffix) is the name that is used to refer to the release.
+The .list file should contain _both_ the deb and deb-src source lines.
+Eg:
+deb http://archive.ubuntu.com/ubuntu jaunty main restricted universe multiverse
+deb-src http://archive.ubuntu.com/ubuntu jaunty main restricted universe multiverse
 
 supybot.plugins.PackageInfo.defaultRelease:
 Set this to the default release to use when none is specified. (Channel)
