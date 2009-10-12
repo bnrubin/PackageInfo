@@ -14,7 +14,7 @@
 import exceptions
 import warnings
 warnings.filterwarnings("ignore", "apt API not stable yet", exceptions.FutureWarning)
-import commands, os, apt
+import commands, os, apt, urllib
 from email import FeedParser
 
 def component(arg):
@@ -23,11 +23,11 @@ def component(arg):
 
 class Apt:
     def __init__(self, plugin):
-        os.environ["LANG"] = "C" # Workaround issues with localized package descriptions
         self.aptdir = plugin.registryValue('aptdir')
         self.distros = []
         self.plugin = plugin
         self.log = plugin.log
+        os.environ["LANG"] = "C"
         if self.aptdir:
             self.distros = [x[:-5] for x in os.listdir(self.aptdir) if x.endswith('.list')]
             self.distros.sort()
@@ -38,21 +38,23 @@ class Apt:
                                  -o"Dir::Cache=%s/cache"\\
                                  -o"APT::Architecture=i386"\\
                                  %%s %%s""" % tuple([self.aptdir]*4)
-            self.aptfilecommand = """apt-file -s %s/%%s.list -c %s/apt-file/%%s -l search %%s""" % tuple([self.aptdir]*2)
+            self.aptfilecommand = """apt-file -s %s/%%s.list -c %s/apt-file/%%s -l search %%s""" % (self.aptdir, self.aptdir)
 
     def find(self, pkg, checkdists, filelookup=True):
         _pkg = ''.join([x for x in pkg.strip().split(None,1)[0] if x.isalnum() or x in '.-_+'])
         distro = checkdists
         if len(pkg.strip().split()) > 1:
-            distro = ''.join([x for x in pkg.strip().split(None,2)[1] if x.isalnum or x in '.-_+'])
+            distro = ''.join([x for x in pkg.strip().split(None,2)[1] if x.isalnum() or x in '.-_+'])
         if distro not in self.distros:
-            return "%s is not a valid distribution %s" % (distro, self.distros)
+            return "%s is not a valid distribution: %s" % (distro, ", ".join(self.distros))
         pkg = _pkg
 
         data = commands.getoutput(self.aptcommand % (distro, distro, distro, 'search -n', pkg))
+        #self.log.info("command output: %r" % data)
         if not data:
             if filelookup:
                 data = commands.getoutput(self.aptfilecommand % (distro, distro, pkg)).split()
+                #self.log.info("command output: %r" % ' '.join(data))
                 if data:
                     if data[0] == 'sh:': # apt-file isn't installed
                       self.log.error("apt-file is not installed")
@@ -61,7 +63,7 @@ class Apt:
                       self.log.error("Please run the 'update_apt_file' script")
                       return "Cache out of date, please contact the administrator"
                     if data[0] == "Use" and data[1] == "of":
-                        url = "http://packages.ubuntu.com/search?searchon=contents&keywords=%s&mode=&suite=%s&arch=any" % (urllib.quote(pkg),distro)
+                        url = "http://packages.ubuntu.com/search?searchon=contents&keywords=%s&mode=&suite=%s&arch=any" % (urllib.quote(pkg), distro)
                         return url
                     if len(data) > 5:
                         return "File %s found in %s (and %d others)" % (pkg, ', '.join(data[:5]), len(data)-5)
@@ -75,6 +77,8 @@ class Apt:
             return "Found: %s" % ', '.join(pkgs[:5])
 
     def info(self, pkg, checkdists):
+        if not pkg.strip():
+            return ''
         _pkg = ''.join([x for x in pkg.strip().split(None,1)[0] if x.isalnum() or x in '.-_+'])
         distro = checkdists
         if len(pkg.strip().split()) > 1:
@@ -82,7 +86,7 @@ class Apt:
         if not distro:
             distro = checkdists
         if distro not in self.distros:
-            return "%s is not a valid distribution %s" % (distro, self.distros)
+            return "%r is not a valid distribution: %s" % (distro, ", ".join(self.distros))
 
         checkdists = distro
 
@@ -104,6 +108,8 @@ class Apt:
                 if type(p) == type(""):
                     self.log.error("apt returned an error, do you have the deb-src URLs in %s.list?" % distro)
                     return "Package lookup faild"
+                if not p.get("Version", None):
+                    continue
                 if apt.VersionCompare(maxp['Version'], p['Version']) < 0:
                     maxp = p
                 del parser
@@ -118,6 +124,8 @@ class Apt:
                 if type(p) == type(""):
                     self.log.error("apt returned an error, do you have the deb-src URLs in %s.list?" % distro)
                     return "Package lookup faild"
+                if not p['Version']:
+                    continue
                 if apt.VersionCompare(maxp2['Version'], p['Version']) < 0:
                     maxp2 = p
                 del parser
@@ -130,3 +138,40 @@ class Apt:
                     maxp['Priority'], maxp['Version'], distro, int(maxp['Size'])/1024, maxp['Installed-Size'], archs))
         return 'Package %s does not exist in %s' % (pkg, checkdists)
                        
+
+# Simple test
+if __name__ == "__main__":
+    import sys
+    argv = sys.argv
+    argc = len(argv)
+    if argc == 1:
+        print "Need at least one arg"
+        sys.exit(1)
+    if argc > 3:
+        print "Only takes 2 args"
+        sys.exit(1)
+    class FakePlugin:
+        class FakeLog:
+            def error(*args, **kwargs):
+                pass
+        def __init__(self):
+            self.log = self.FakeLog()
+        def registryValue(self, *args, **kwargs):
+            return "/home/jussi/bot/aptdir"
+
+    command = argv[1].split(None, 1)[0]
+    try:
+        lookup = argv[1].split(None, 1)[1]
+    except:
+        print "Need something to lookup"
+        sys.exit(1)
+    dists = "hardy"
+    if argc == 3:
+        dists = argv[2]
+    plugin = FakePlugin()
+    aptlookup = Apt(plugin)
+    if command == "find":
+        print aptlookup.find(lookup, dists)
+    else:
+        print aptlookup.info(lookup, dists)
+

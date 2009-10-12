@@ -32,10 +32,11 @@ import supybot.utils as utils
 from supybot.commands import *
 import supybot.plugins as plugins
 import supybot.ircutils as ircutils
+import supybot.ircmsgs as ircmsgs
 import supybot.callbacks as callbacks
 import supybot.ircutils as ircutils
-import supybot.conf as conf
 import supybot.ircdb as ircdb
+import supybot.conf as conf
 import os
 import packages
 reload(packages)
@@ -46,7 +47,6 @@ def get_user(msg):
     except:
         return False
     return user
-
 
 class PackageInfo(callbacks.Plugin):
     """Lookup package information via apt-cache/apt-file"""
@@ -65,73 +65,133 @@ class PackageInfo(callbacks.Plugin):
         return (before, [])
 
     def __getRelease(self, irc, release, channel, doError=True):
-        if release:
-            return release
-        release = self.registryValue("defaultRelease", channel)
-        if not release:
+        defaultRelease = self.registryValue("defaultRelease", channel)
+        if not defaultRelease:
             if doError:
                 irc.error("'supybot.plugins.PackageInfo.defaultRelease' is not set")
-            return None
-        return release
+            return (None, None)
+        if not release:
+            return (defaultRelease, None)
+        (release, rest) = (release.split(' ', 1) + [None])[:2]
+        if release[0] in ('|', '>'):
+            return (defaultRelease, "%s %s" % (release, rest))
+        return (release, rest)
 
     def __getChannel(self, channel):
         return ircutils.isChannel(channel) and channel or None
 
-    def info(self, irc, msg, args, package, release):
+    def real_info(self, irc, msg, args, package, release):
         """<package> [<release>]
 
         Lookup information for <package>, optionally in <release>
         """
         channel = self.__getChannel(msg.args[0])
-        release = self.__getRelease(irc, release, channel)
+        (release, rest) = self.__getRelease(irc, release, channel)
         if not release:
             return
-        irc.reply(self.Apt.info(package, release))
+        reply = self.Apt.info(package, release)
+        if rest:
+            if rest[0] == '|':
+                try:
+                    target = rest.split()[1]
+                    if target.lower() == "me":
+                        target = msg.nick
+                    irc.reply("%s: %s" % (target, reply))
+                    return
+                except Exception, e:
+                    self.log.info("Info: Exception in pipe: %r" % e)
+                    pass
+            elif rest[0] == '>':
+                try:
+                    target = rest.split()[1]
+                    if target.lower() == "me":
+                        target = msg.nick
+                    irc.queueMsg(ircmsgs.privmsg(target, "<%s> wants you to know: %s" % (msg.nick, reply)))
+                    return
+                except Exception, e:
+                    self.log.info("Info: Exception in redirect: %r" % e)
+                    pass
 
-    info = wrap(info, ['text', optional('text')])
+        irc.reply(reply)
 
-    def find(self, irc, msg, args, package, release):
+    info = wrap(real_info, ['anything', optional('text')])
+
+    def real_find(self, irc, msg, args, package, release):
         """<package/filename> [<release>]
 
         Search for <package> or, of that fails, find <filename>'s package(s).
         Optionally in <release>
         """
         channel = self.__getChannel(msg.args[0])
-        release = self.__getRelease(irc, release, channel)
+        (release, rest) = self.__getRelease(irc, release, channel)
         if not release:
             return
-        irc.reply(self.Apt.find(package, release))
+        reply = self.Apt.find(package, release)
+        if rest:
+            if rest[0] == '|':
+                try:
+                    target = rest.split()[1]
+                    if target.lower() == "me":
+                        target = msg.nick
+                    irc.reply("%s: %s" % (target, reply))
+                    return
+                except Exception, e:
+                    self.log.info("Find: Exception in pipe: %r" % e)
+                    pass
+            elif rest[0] == '>':
+                try:
+                    target = rest.split()[1]
+                    if target.lower() == "me":
+                        target = msg.nick
+                    irc.queueMsg(ircmsgs.privmsg(target, "<%s> wants you to know: %s" % (msg.nick, reply)))
+                    return
+                except Exception, e:
+                    self.log.info("Find: Exception in redirect: %r" % e)
+                    pass
 
-    find = wrap(find, ['text', optional('text')])
+        irc.reply(reply)
+
+    find = wrap(real_find, ['anything', optional('text')])
 
     def privmsg(self, irc, msg, user):
-        text = msg.args[1]
-        release = self.__getRelease(irc, None, channel, False)
+        channel = self.__getChannel(msg.args[0])
+        text = msg.args[1].strip()
         if text[0] == self.registryValue("prefixchar"):
             text = text[1:]
         if user and text[0] in str(conf.supybot.reply.whenAddressedBy.get('chars')):
             return
-        if text[:4] == "find":
-            irc.reply(self.Apt.find(text[4:].strip(), release))
+        (cmd, rest) = (text.split(' ', 1) + [None])[:2]
+        if cmd not in ("find", "info"):
+            return
+        if not rest:
+            return
+        (term, rest) = (rest.split(' ', 1) + [None])[:2]
+        if cmd == "find":
+            self.real_find(irc, msg, [], term, rest)
         else:
-            irc.reply(self.Apt.info(text[4:].strip(), release))
+            self.real_info(irc, msg, [], term, rest)
 
     def chanmsg(self, irc, msg, user):
         channel = self.__getChannel(msg.args[0])
-        text = msg.args[1]
-        release = self.__getRelease(irc, None, channel, False)
+        text = msg.args[1].strip()
         if text[0] != self.registryValue("prefixchar", channel):
             return
         text = text[1:]
-        if not text[:4] in ("find", "info"):
+        (cmd, rest) = (text.split(' ', 1) + [None])[:2]
+        if cmd not in ("find", "info"):
             return
-        if text[:4] == "find":
-            irc.reply(self.Apt.find(text[4:].strip(), release))
+        if not rest:
+            return
+        (term, rest) = (rest.split(' ', 1) + [None])[:2]
+        if cmd == "find":
+            self.real_find(irc, msg, [], term, rest)
         else:
-            irc.reply(self.Apt.info(text[4:].strip(), release))
+            self.real_info(irc, msg, [], term, rest)
 
     def doPrivmsg(self, irc, msg):
         if chr(1) in msg.args[1]: # CTCP
+            return
+        if not msg.args[1]:
             return
         channel = self.__getChannel(msg.args[0])
         if not self.registryValue("enabled", channel):
@@ -139,13 +199,12 @@ class PackageInfo(callbacks.Plugin):
         user = get_user(msg)
         if channel:
             self.chanmsg(irc, msg, user)
-        elif user:
-            return
+        else:
+            if user:
+                return
             self.privmsg(irc, msg, user)
 
     def inFilter(self, irc, msg):
-        if not conf.supybot.get("defaultIgnore"):
-            return msg
         if msg.command != "PRIVMSG":
             return msg
         text = msg.args[1]
@@ -154,7 +213,7 @@ class PackageInfo(callbacks.Plugin):
             return msg
         channel = self.__getChannel(msg.args[0])
         if channel:
-            if text[:5] not in ("!info", "!find", "@info", "@find"):
+            if not text[:5] in ("!info", "!find", "@info", "@find"):
                 return msg
         else:
             if text[:5] in ("info ", "find ", "!info", "!find", "@info", "@find"):

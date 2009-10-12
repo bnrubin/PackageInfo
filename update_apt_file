@@ -5,14 +5,45 @@ if [ -x "$(which apt-file)" ]; then
     exit 1
 fi
 
-DIR=/home/bot/data/apt
+DIR=/home/bot/aptdir
+VERBOSE="no"
+
+while [ "x$1" != "x" ]; do
+    case "$1" in
+        -v|--verbose)
+            VERBOSE="yes"
+            ;;
+        -d|--dir)
+            if [ "x$2" == "x" ]; then
+                echo "\"-d|--dir\" requires an argument" >&2
+                exit 1
+            fi
+            shift
+            DIR="$1"
+            ;;
+        -*)
+            echo "Unknown option \"$1\"" >&2
+            exit 1
+            ;;
+        *)
+            echo "This script takes no arguments" >&2
+            exit 1
+            ;;
+    esac
+    shift
+done
 
 for DIST in "$DIR"/*.list; do
     test -h $DIST && continue
     DIST=${DIST:${#DIR}}
     DIST=${DIST/.list}
     mkdir -p "$DIR/apt-file/$DIST"
-    apt-file -l -c "$DIR/apt-file/$DIST" -s "$DIR/$DIST.list" update >/dev/null 2>&1
+    if [ "${VERBOSE}" != "no" ]; then
+        echo "Processing $DIST"
+        apt-file -l -c "$DIR/apt-file/$DIST" -s "$DIR/$DIST.list" update
+    else
+        apt-file -l -c "$DIR/apt-file/$DIST" -s "$DIR/$DIST.list" update >/dev/null 2>&1
+    fi
     RET=$?
     if [ ! $RET ]; then
         echo "apt-file failed for $DIST!"
