@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if [ -x "$(which apt-file)" ]; then
+if [ ! -x "$(which apt-file)" ]; then
     echo "Please install apt-file"
     exit 1
 fi

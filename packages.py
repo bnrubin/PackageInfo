@@ -25,11 +25,15 @@ class Apt:
     def __init__(self, plugin):
         self.aptdir = plugin.registryValue('aptdir')
         self.distros = []
+#        self.urls = {}
         self.plugin = plugin
         self.log = plugin.log
         os.environ["LANG"] = "C"
         if self.aptdir:
             self.distros = [x[:-5] for x in os.listdir(self.aptdir) if x.endswith('.list')]
+#            urls = [x for x in os.listdir(self.aptdir) if x.endswith(".url")]
+#            for urlf in urls:
+#                self.readIrl(urlf)
             self.distros.sort()
             self.aptcommand = """apt-cache\\
                                  -o"Dir::State::Lists=%s/%%s"\\
@@ -133,11 +137,29 @@ class Apt:
             if maxp2.has_key('Architecture'):
                 if maxp2['Architecture'] not in ('all','any'):
                     archs = ' (Only available for %s)' % maxp2['Architecture']
-            return("%s (source: %s): %s. In component %s, is %s. Version %s (%s), package size %s kB, installed size %s kB%s" %
+            maxp["Distrobution"] = distro
+            return("%s (source: %s): %s. In component %s, is %s. Version %s (%s), package size %s kB, installed size %s kB%s%s" %
                    (maxp['Package'], maxp['Source'] or maxp['Package'], maxp['Description'].split('\n')[0], component(maxp['Section']),
-                    maxp['Priority'], maxp['Version'], distro, int(maxp['Size'])/1024, maxp['Installed-Size'], archs))
+                    maxp['Priority'], maxp['Version'], distro, int(maxp['Size'])/1024, maxp['Installed-Size'], archs, self.getUrl(maxp)))
         return 'Package %s does not exist in %s' % (pkg, checkdists)
                        
+    @staticmethod
+    def readUrl(urlfile):
+        distro = os.path.splitext(urlfile)[0]
+        url = None
+        try:
+            assert distro in self.distros, '%s is not a valid distrobution (no .list file)' % distro
+            f = open(os.path.join(self.aptdir, urlfile))
+            lines = [i.strip() for i in f.readlines() if i.strip()]
+            assert len(lines) == 1, 'Expected 1 line in "%s", read %d' % (urlfile, len(lines))
+            self.urls[distro] = lines[0]
+        except Exception, e:
+            self.plugin.log.warning("%s (%s)" % (e.__class__, e))
+
+    def getUrl(self, maxp):
+        if not maxp["Distrobution"] in self.urls:
+            return ""
+        return " - see %s" % (self.urls[maxp["Distrobution"]] % maxp)
 
 # Simple test
 if __name__ == "__main__":
