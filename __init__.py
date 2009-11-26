@@ -1,5 +1,5 @@
 ###
-# Copyright (c) 2008, Terence Simpson
+# Copyright (c) 2008, Terence Simpson <tsimpson@ubuntu.com>
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -36,21 +36,13 @@ here.  This should describe *what* the plugin does.
 import supybot
 import supybot.world as world
 
-# Use this for the version of this plugin.  You may wish to put a CVS keyword
-# in here if you're keeping the plugin in CVS or some similar system.
-__version__ = "0.0.1"
-
-# XXX Replace this with an appropriate author or supybot.Author instance.
-__author__ = supybot.Author("Terence Simpson", "stdin", "stdin@stdin.me.uk")
-
-# This is a dictionary mapping supybot.Author instances to lists of
-# contributions.
-__contributors__ = {supybot.Author("Dennis Kaarsemaker","Seveas","dennis@kaarsemaker.net"): ["Origional concept"]}
-
-# This is a url where the most recent plugin package can be downloaded.
-__url__ = '' # 'http://supybot.com/Members/yourname/PackageInfo/download'
+__version__ = "0.9.0"
+__author__ = supybot.Author("Terence Simpson", "tsimpson", "tsimpson@ubuntu.com")
+__contributors__ = {supybot.Author("Dennis Kaarsemaker","Seveas","dennis@kaarsemaker.net"): ["Origional code"]}
+__url__ = 'http://ubottu.com'
 
 import config
+reload(config)
 import plugin
 reload(plugin) # In case we're being reloaded.
 import packages
