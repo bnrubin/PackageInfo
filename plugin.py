@@ -207,6 +207,8 @@ class PackageInfo(callbacks.Plugin):
     def inFilter(self, irc, msg):
         if msg.command != "PRIVMSG":
             return msg
+        if not conf.supybot.defaultIgnore():
+            return msg
         text = msg.args[1]
         user = get_user(msg)
         if user:
