@@ -29,8 +29,7 @@
 ###
 
 """
-Add a description of the plugin (to be presented to the user inside the wizard)
-here.  This should describe *what* the plugin does.
+Display information on packages using apt-cache and search for files in packages with apt-file.
 """
 
 import supybot
