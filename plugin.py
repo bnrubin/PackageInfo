@@ -38,6 +38,7 @@ import supybot.ircutils as ircutils
 import supybot.ircdb as ircdb
 import supybot.conf as conf
 import os
+import re
 import packages
 reload(packages)
 
@@ -51,6 +52,7 @@ def get_user(msg):
 class PackageInfo(callbacks.Plugin):
     """Lookup package information via apt-cache/apt-file"""
     threaded = True
+    space_re = re.compile(r'  *')
 
     def __init__(self, irc):
         self.__parent = super(PackageInfo, self)
@@ -155,9 +157,9 @@ class PackageInfo(callbacks.Plugin):
 
     def privmsg(self, irc, msg, user):
         channel = self.__getChannel(msg.args[0])
-        text = msg.args[1].strip()
+        text = self.space_re.subn(' ', msg.args[1].strip())[0]
         if text[0] == self.registryValue("prefixchar"):
-            text = text[1:]
+            text = text[1:].strip()
         if user and text[0] in str(conf.supybot.reply.whenAddressedBy.get('chars')):
             return
         (cmd, rest) = (text.split(' ', 1) + [None])[:2]
@@ -173,10 +175,9 @@ class PackageInfo(callbacks.Plugin):
 
     def chanmsg(self, irc, msg, user):
         channel = self.__getChannel(msg.args[0])
-        text = msg.args[1].strip()
+        text = self.space_re.subn(' ', msg.args[1].strip())[0]
         if text[0] != self.registryValue("prefixchar", channel):
             return
-        text = text[1:]
         (cmd, rest) = (text.split(' ', 1) + [None])[:2]
         if cmd not in ("find", "info"):
             return
@@ -209,16 +210,26 @@ class PackageInfo(callbacks.Plugin):
             return msg
         if not conf.supybot.defaultIgnore():
             return msg
-        text = msg.args[1]
+        text = msg.args[1].strip()
+        if len(text) < 6:
+            return msg
         user = get_user(msg)
         if user:
             return msg
         channel = self.__getChannel(msg.args[0])
         if channel:
-            if not text[:5] in ("!info", "!find", "@info", "@find"):
+            if text[0] not in ('!', '@'):
                 return msg
+            if not text[1:5] in ("info", "find"):
+                return msg
+#            irc = callbacks.ReplyIrcProxy(irc, msg)
+#            self.doPrivmsg(irc, msg)
         else:
-            if text[:5] in ("info ", "find ", "!info", "!find", "@info", "@find"):
+            if text[1] in ('!', '@'):
+                if text[1:5] in ("info", "find"):
+                    irc = callbacks.ReplyIrcProxy(irc, msg)
+                    self.doPrivmsg(irc, msg)
+            elif text[:4] in ("info", "find"):
                 irc = callbacks.ReplyIrcProxy(irc, msg)
                 self.doPrivmsg(irc, msg)
             else:
