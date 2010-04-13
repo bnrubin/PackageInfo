@@ -39,6 +39,7 @@ import supybot.ircdb as ircdb
 import supybot.conf as conf
 import os
 import re
+import time
 import packages
 reload(packages)
 
@@ -133,7 +134,7 @@ class PackageInfo(callbacks.Plugin):
                     self.log.info("Info: Exception in redirect: %r" % e)
                     pass
 
-        queue(irc, args[0], reply)
+        queue(irc, msg.args[0], reply)
 
     info = wrap(real_info, ['anything', optional('text')])
 
@@ -197,6 +198,7 @@ class PackageInfo(callbacks.Plugin):
         text = self.space_re.subn(' ', msg.args[1].strip())[0]
         if text[0] != self.registryValue("prefixchar", channel):
             return
+        text = text[1:]
         (cmd, rest) = (text.split(' ', 1) + [None])[:2]
         if cmd not in ("find", "info"):
             return
@@ -241,7 +243,8 @@ class PackageInfo(callbacks.Plugin):
                 return msg
             if not text[1:5] in ("info", "find"):
                 return msg
-#            irc = callbacks.ReplyIrcProxy(irc, msg)
+#            if not hasattr(irc, 'reply'):
+#                irc = callbacks.ReplyIrcProxy(irc, msg)
 #            self.doPrivmsg(irc, msg)
         else:
             if text[1] in ('!', '@'):
