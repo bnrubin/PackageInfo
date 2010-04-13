@@ -1,5 +1,5 @@
 ###
-# Copyright (c) 2008, Terence Simpson
+# Copyright (c) 2008-2010, Terence Simpson <tsimpson@ubuntu.com>
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without

@@ -1,5 +1,6 @@
 ###
 # Copyright (c) 2006-2007 Dennis Kaarsemaker
+# Copyright (c) 2008-2010 Terence Simpson <tsimpson@ubuntu.com>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of version 2 of the GNU General Public License as
@@ -25,15 +26,11 @@ class Apt:
     def __init__(self, plugin):
         self.aptdir = plugin.registryValue('aptdir')
         self.distros = []
-#        self.urls = {}
         self.plugin = plugin
         self.log = plugin.log
         os.environ["LANG"] = "C"
         if self.aptdir:
             self.distros = [x[:-5] for x in os.listdir(self.aptdir) if x.endswith('.list')]
-#            urls = [x for x in os.listdir(self.aptdir) if x.endswith(".url")]
-#            for urlf in urls:
-#                self.readIrl(urlf)
             self.distros.sort()
             self.aptcommand = """apt-cache\\
                                  -o"Dir::State::Lists=%s/%%s"\\
@@ -54,11 +51,9 @@ class Apt:
         pkg = _pkg
 
         data = commands.getoutput(self.aptcommand % (distro, distro, distro, 'search -n', pkg))
-        #self.log.info("command output: %r" % data)
         if not data:
             if filelookup:
                 data = commands.getoutput(self.aptfilecommand % (distro, distro, pkg)).split()
-                #self.log.info("command output: %r" % ' '.join(data))
                 if data:
                     if data[0] == 'sh:': # apt-file isn't installed
                       self.log.error("apt-file is not installed")
@@ -143,24 +138,6 @@ class Apt:
                     maxp['Priority'], maxp['Version'], distro, int(maxp['Size'])/1024, maxp['Installed-Size'], archs))
         return 'Package %s does not exist in %s' % (pkg, checkdists)
                        
-    @staticmethod
-    def readUrl(urlfile):
-        distro = os.path.splitext(urlfile)[0]
-        url = None
-        try:
-            assert distro in self.distros, '%s is not a valid distrobution (no .list file)' % distro
-            f = open(os.path.join(self.aptdir, urlfile))
-            lines = [i.strip() for i in f.readlines() if i.strip()]
-            assert len(lines) == 1, 'Expected 1 line in "%s", read %d' % (urlfile, len(lines))
-            self.urls[distro] = lines[0]
-        except Exception, e:
-            self.plugin.log.warning("%s (%s)" % (e.__class__, e))
-
-    def getUrl(self, maxp):
-        if not maxp["Distrobution"] in self.urls:
-            return ""
-        return " - see %s" % (self.urls[maxp["Distrobution"]] % maxp)
-
 # Simple test
 if __name__ == "__main__":
     import sys
@@ -179,7 +156,7 @@ if __name__ == "__main__":
         def __init__(self):
             self.log = self.FakeLog()
         def registryValue(self, *args, **kwargs):
-            return "/home/jussi/bot/aptdir"
+            return "/home/bot/aptdir"
 
     command = argv[1].split(None, 1)[0]
     try:

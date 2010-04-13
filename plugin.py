@@ -1,5 +1,5 @@
 ###
-# Copyright (c) 2008, Terence Simpson
+# Copyright (c) 2008-2010, Terence Simpson <tsimpson@ubuntu.com>
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -48,6 +48,25 @@ def get_user(msg):
     except:
         return False
     return user
+
+## Taken from Encyclopedia ##
+# Repeat filtering message queue
+msgcache = {}
+def queue(irc, to, msg):
+    now = time.time()
+    for m in msgcache.keys():
+        if msgcache[m] < now - 30:
+            msgcache.pop(m)
+    for m in msgcache:
+        if m[0] == irc and m[1] == to:
+            oldmsg = m[2]
+            if msg == oldmsg or oldmsg.endswith(msg):
+                break
+            if msg.endswith(oldmsg):
+                msg = msg[:-len(oldmsg)] + 'please see above'
+    else:
+        msgcache[(irc, to, msg)] = now
+        irc.queueMsg(ircmsgs.privmsg(to, msg))
 
 class PackageInfo(callbacks.Plugin):
     """Lookup package information via apt-cache/apt-file"""
@@ -98,7 +117,7 @@ class PackageInfo(callbacks.Plugin):
                     target = rest.split()[1]
                     if target.lower() == "me":
                         target = msg.nick
-                    irc.reply("%s: %s" % (target, reply))
+                    queue(irc, msg.args[0], "%s: %s" % (target, reply))
                     return
                 except Exception, e:
                     self.log.info("Info: Exception in pipe: %r" % e)
@@ -108,13 +127,13 @@ class PackageInfo(callbacks.Plugin):
                     target = rest.split()[1]
                     if target.lower() == "me":
                         target = msg.nick
-                    irc.queueMsg(ircmsgs.privmsg(target, "<%s> wants you to know: %s" % (msg.nick, reply)))
+                    queue(irc, target, "<%s> wants you to know: %s" % (msg.nick, reply))
                     return
                 except Exception, e:
                     self.log.info("Info: Exception in redirect: %r" % e)
                     pass
 
-        irc.reply(reply)
+        queue(irc, args[0], reply)
 
     info = wrap(real_info, ['anything', optional('text')])
 
@@ -135,7 +154,7 @@ class PackageInfo(callbacks.Plugin):
                     target = rest.split()[1]
                     if target.lower() == "me":
                         target = msg.nick
-                    irc.reply("%s: %s" % (target, reply))
+                    queue(irc, msg.args[0], "%s: %s" % (target, reply))
                     return
                 except Exception, e:
                     self.log.info("Find: Exception in pipe: %r" % e)
@@ -145,13 +164,13 @@ class PackageInfo(callbacks.Plugin):
                     target = rest.split()[1]
                     if target.lower() == "me":
                         target = msg.nick
-                    irc.queueMsg(ircmsgs.privmsg(target, "<%s> wants you to know: %s" % (msg.nick, reply)))
+                    queue(irc, target, "<%s> wants you to know: %s" % (msg.nick, reply))
                     return
                 except Exception, e:
                     self.log.info("Find: Exception in redirect: %r" % e)
                     pass
 
-        irc.reply(reply)
+        queue(irc, msg.args[0], reply)
 
     find = wrap(real_find, ['anything', optional('text')])
 

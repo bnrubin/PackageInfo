@@ -7,6 +7,9 @@ DEFAULT_OPTS="-qq"
 while [ "x$1" != "x" ]; do
     case "$1" in
         -v|--verbose)
+            DEFAULT_OPTS="-q"
+            ;;
+        -V|--very-verbose)
             DEFAULT_OPTS=""
             ;;
         -d|--dir)

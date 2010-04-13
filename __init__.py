@@ -1,5 +1,5 @@
 ###
-# Copyright (c) 2008, Terence Simpson <tsimpson@ubuntu.com>
+# Copyright (c) 2008-2010, Terence Simpson <tsimpson@ubuntu.com>
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -35,10 +35,10 @@ Display information on packages using apt-cache and search for files in packages
 import supybot
 import supybot.world as world
 
-__version__ = "0.9.0"
+__version__ = "0.9.1"
 __author__ = supybot.Author("Terence Simpson", "tsimpson", "tsimpson@ubuntu.com")
 __contributors__ = {supybot.Author("Dennis Kaarsemaker","Seveas","dennis@kaarsemaker.net"): ["Origional code"]}
-__url__ = 'http://ubottu.com'
+__url__ = 'https://launchpad.net/ubuntu-bots'
 
 import config
 reload(config)
