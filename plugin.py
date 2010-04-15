@@ -242,8 +242,8 @@ class PackageInfo(callbacks.Plugin):
         channel = self.__getChannel(msg.args[0])
         reply_chars = tuple([self.registryValue("prefixchar", channel)] + list(conf.supybot.reply.whenAddressedBy.chars.get(channel)))
         my_commands = self.listCommands()
-        if user
-            if not channel and text[0] == self.registryValue("prefixchar")
+        if user:
+            if not channel and text[0] == self.registryValue("prefixchar"):
                 msg.args = (msg.args[0], text[1:])
             return msg
         if channel:
