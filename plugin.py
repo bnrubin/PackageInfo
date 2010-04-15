@@ -180,12 +180,13 @@ class PackageInfo(callbacks.Plugin):
     def privmsg(self, irc, msg, user):
         channel = self.__getChannel(msg.args[0])
         text = self.space_re.subn(' ', msg.args[1].strip())[0]
+        my_commands = self.listCommands()
         if text[0] == self.registryValue("prefixchar"):
             text = text[1:].strip()
-        if user and text[0] in str(conf.supybot.reply.whenAddressedBy.get('chars')):
+        if user and text[0] in list(conf.supybot.reply.whenAddressedBy.chars()):
             return
         (cmd, rest) = (text.split(' ', 1) + [None])[:2]
-        if cmd not in ("find", "info"):
+        if cmd not in my_commands:
             return
         if not rest:
             return
@@ -198,11 +199,12 @@ class PackageInfo(callbacks.Plugin):
     def chanmsg(self, irc, msg, user):
         channel = self.__getChannel(msg.args[0])
         text = self.space_re.subn(' ', msg.args[1].strip())[0]
+        my_commands = self.listCommands()
         if text[0] != self.registryValue("prefixchar", channel):
             return
         text = text[1:]
         (cmd, rest) = (text.split(' ', 1) + [None])[:2]
-        if cmd not in ("find", "info"):
+        if cmd not in my_commands:
             return
         if not rest:
             return
@@ -237,23 +239,27 @@ class PackageInfo(callbacks.Plugin):
         if len(text) < 6:
             return msg
         user = get_user(msg)
-        if user:
-            return msg
         channel = self.__getChannel(msg.args[0])
+        reply_chars = tuple([self.registryValue("prefixchar", channel)] + list(conf.supybot.reply.whenAddressedBy.chars.get(channel)))
+        my_commands = self.listCommands()
+        if user
+            if not channel and text[0] == self.registryValue("prefixchar")
+                msg.args = (msg.args[0], text[1:])
+            return msg
         if channel:
-            if text[0] not in ('!', '@'):
+            if text[0] not in reply_chars:
                 return msg
-            if not text[1:5] in ("info", "find"):
+            if not text[1:5] in my_commands:
                 return msg
 #            if not hasattr(irc, 'reply'):
 #                irc = callbacks.ReplyIrcProxy(irc, msg)
 #            self.doPrivmsg(irc, msg)
         else:
-            if text[1] in ('!', '@'):
-                if text[1:5] in ("info", "find"):
+            if text[1] in reply_chars:
+                if text[1:5] in my_commands:
                     irc = callbacks.ReplyIrcProxy(irc, msg)
                     self.doPrivmsg(irc, msg)
-            elif text[:4] in ("info", "find"):
+            elif text[:4] in my_commands:
                 irc = callbacks.ReplyIrcProxy(irc, msg)
                 self.doPrivmsg(irc, msg)
             else:
