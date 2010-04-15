@@ -108,6 +108,7 @@ class PackageInfo(callbacks.Plugin):
         Lookup information for <package>, optionally in <release>
         """
         channel = self.__getChannel(msg.args[0])
+        reply_target = ircutils.replyTo(msg)
         (release, rest) = self.__getRelease(irc, release, channel)
         if not release:
             return
@@ -118,7 +119,7 @@ class PackageInfo(callbacks.Plugin):
                     target = rest.split()[1]
                     if target.lower() == "me":
                         target = msg.nick
-                    queue(irc, msg.args[0], "%s: %s" % (target, reply))
+                    queue(irc, reply_target, "%s: %s" % (target, reply))
                     return
                 except Exception, e:
                     self.log.info("Info: Exception in pipe: %r" % e)
@@ -134,7 +135,7 @@ class PackageInfo(callbacks.Plugin):
                     self.log.info("Info: Exception in redirect: %r" % e)
                     pass
 
-        queue(irc, msg.args[0], reply)
+        queue(irc, reply_target, reply)
 
     info = wrap(real_info, ['anything', optional('text')])
 
@@ -145,6 +146,7 @@ class PackageInfo(callbacks.Plugin):
         Optionally in <release>
         """
         channel = self.__getChannel(msg.args[0])
+        reply_target = ircutils.replyTo(msg)
         (release, rest) = self.__getRelease(irc, release, channel)
         if not release:
             return
@@ -155,7 +157,7 @@ class PackageInfo(callbacks.Plugin):
                     target = rest.split()[1]
                     if target.lower() == "me":
                         target = msg.nick
-                    queue(irc, msg.args[0], "%s: %s" % (target, reply))
+                    queue(irc, reply_target, "%s: %s" % (target, reply))
                     return
                 except Exception, e:
                     self.log.info("Find: Exception in pipe: %r" % e)
@@ -171,7 +173,7 @@ class PackageInfo(callbacks.Plugin):
                     self.log.info("Find: Exception in redirect: %r" % e)
                     pass
 
-        queue(irc, msg.args[0], reply)
+        queue(irc, reply_target, reply)
 
     find = wrap(real_find, ['anything', optional('text')])
 
