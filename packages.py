@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 ###
 # Copyright (c) 2006-2007 Dennis Kaarsemaker
 # Copyright (c) 2008-2010 Terence Simpson <tsimpson@ubuntu.com>
