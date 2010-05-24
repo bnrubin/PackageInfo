@@ -1,31 +1,16 @@
+# -*- Encoding: utf-8 -*-
 ###
-# Copyright (c) 2008-2010, Terence Simpson <tsimpson@ubuntu.com>
-# All rights reserved.
+# Copyright (c) 2008-2010 Terence Simpson
 #
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions are met:
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of version 2 of the GNU General Public License as
+# published by the Free Software Foundation.
 #
-#   * Redistributions of source code must retain the above copyright notice,
-#     this list of conditions, and the following disclaimer.
-#   * Redistributions in binary form must reproduce the above copyright notice,
-#     this list of conditions, and the following disclaimer in the
-#     documentation and/or other materials provided with the distribution.
-#   * Neither the name of the author of this software nor the name of
-#     contributors to this software may be used to endorse or promote products
-#     derived from this software without specific prior written consent.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 #
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-# ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
-# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-# POSSIBILITY OF SUCH DAMAGE.
-
 ###
 
 import supybot.conf as conf
@@ -36,26 +21,82 @@ def configure(advanced):
     # a bool that specifies whether the user identified himself as an advanced
     # user or not.  You should effect your configuration by manipulating the
     # registry as appropriate.
+    def makeSource(release):
+        return """deb http://archive.ubuntu.com/ubuntu/ %s main restricted universe multiverse
+deb-src http://archive.ubuntu.com/ubuntu/ %s main restricted universe multiverse
+"""
+
     from supybot.questions import output, expect, anything, something, yn
+    import os
     conf.registerPlugin('PackageInfo', True)
-    enabled = yn("Enable the pugin", default=True)
-    if not enabled:
-        PackageInfo.enabled.setValue(enabled)
-        PackageInfo.aptdir.setValue('')
-        PackageInfo.prefixchar.setValue('!')
-        PackageInfo.defaultRelease.setValue("hardy")
-        return
-    aptdir = something("Where should the apt directory be? (<botdir>/data/apt for example)")
-    output("This value should be different from the bots default reply character")
-    prefixchar = something("What character should the bot respond to?", default='!')
-    defaultRelease = expect("Default release to use when none is specified",
-            possibilities=['dapper', 'feisty', 'gutsy', 'hardy', 'intrepid'],
-            default='hardy')
+
+    enabled = yn("Enable this plugin in all channels?", default=True)
+
+    if enabled and advanced:
+        prefixchar = something("Which prefix character should be bot respond to?", default=PackageInfo.prefixchar._default)
+        defaultRelease = something("What should be the default distrobution when not specified?", default=PackageInfo.defaultRelease._default)
+        aptdir = something("Which directory should be used for the apt cache when looking up packages?", default=supybot.directories.data.dirize('aptdir'))
+
+        # People tend to thing this should be /var/cache/apt
+        while aptdir.beginswith('/var'):
+            output("NO! Do not use your systems apt directory")
+            aptdir = something("Which directory should be used for the apt cache when looking up packages?", default=supybot.directories.data.dirize('aptdir'))
+
+    else:
+        prefixchar = PackageInfo.prefixchar._default
+        defaultRelease = PackageInfo.defaultRelease._default
+        aptdir = supybot.directories.data.dirize('aptdir')
+
+
     PackageInfo.enabled.setValue(enabled)
     PackageInfo.aptdir.setValue(aptdir)
     PackageInfo.prefixchar.setValue(prefixchar)
     PackageInfo.defaultRelease.setValue(defaultRelease)
 
+    default_dists = set(['hardy', 'jaunty', 'karmic', 'lucid', 'maveric'])
+    pluginDir = os.path.abspath(os.path.dirname(__file__))
+    update_apt = os.path.join(pluginDir, 'update_apt')
+    update_apt_file = os.path.join(pluginDir, 'update_apt_file')
+
+    default_dists.add(defaultRelease)
+
+    for release in default_dist:
+        filename = os.path.join(aptdir, "%s.list" % release)
+        try:
+            output("Creating %s" % filename)
+            fd = fileutils.open(filename)
+            fd.write("# Apt sources list for Ubuntu %s\n" % release)
+            fd.write(makeSource(release))
+            fd.write(makeSource(release + '-security'))
+            fd.write(makeSource(release + '-updates'))
+            fd.close()
+
+            for sub in ('backports', 'proposed'):
+                release = "%s-%s" % sub
+                filename = os.path.join(aptdir, "%s.list" % release)
+                output("Creating %s" % filename)
+                fd = fileutils.open(filename)
+                fd.write("# Apt sources list for Ubuntu %s\n" % release)
+                fd.write(makeSource(release))
+                fd.close()
+        except Exception, e:
+            output("Error writing to %r: %r (%s)" % (filename, str(e), type(e)))
+
+    if yn("In order for the plugin to use these sources, you must run the 'update_apt' script, do you want to do this now?", default=True):
+        os.environ['DIR'] = aptdir # the update_apt script checks if DIR is set and uses it if it is
+        (e, o) = commands.getstatusoutput(update_apt)
+        if e != 0:
+            output("There was an error running update_apt, please run '%s -v' to get more information" % update_apt)
+
+    (e, o) = commands.statusoutput('which apt-file')
+    if e != 0:
+        output("You need to install apt-file in order to use the !find command of this plugin")
+    else:
+        if yn("In order for the !find command to work, you must run the 'update_apt_file' script, do you want to do this now?", default=True):
+            os.environ['DIR'] = aptdir # the update_apt_file script checks if DIR is set and uses it if it is
+            (e, o) = commands.getstatusoutput(update_apt_file)
+            if e != 0:
+                output("There was an error running update_apt_file, please run '%s -v' to get more information" % update_apt_file)
 
 PackageInfo = conf.registerPlugin('PackageInfo')
 conf.registerChannelValue(PackageInfo, 'enabled',
@@ -63,8 +104,8 @@ conf.registerChannelValue(PackageInfo, 'enabled',
 conf.registerChannelValue(PackageInfo, 'prefixchar',
     conf.ValidPrefixChars('!', "Character the bot will respond to"))
 conf.registerChannelValue(PackageInfo, 'defaultRelease',
-    registry.String('', "Default release to use when none is specified"))
+    registry.String('lucid', "Default release to use when none is specified"))
 conf.registerGlobalValue(PackageInfo, 'aptdir',
-    registry.String('', "Path to the apt directory", private=True))
+    conf.Directory(conf.supybot.directories.data.dirize('aptdir'), "Path to the apt directory", private=True))
 
 # vim:set shiftwidth=4 tabstop=4 expandtab textwidth=79:

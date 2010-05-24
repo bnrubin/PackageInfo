@@ -5,8 +5,13 @@ if [ ! -x "$(which apt-file)" ]; then
     exit 1
 fi
 
-DIR=/home/bot/aptdir
-VERBOSE="no"
+if [ -z "$DIR" ]; then
+    DIR=/home/bot/aptdir
+fi
+
+if [ -z "$VERBOSE" ]; then
+    VERBOSE="no"
+fi
 
 while [ "x$1" != "x" ]; do
     case "$1" in

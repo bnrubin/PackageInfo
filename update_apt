@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 
-DIR=/home/bot/aptdir
+if [ -z "$DIR" ]; then
+    DIR=/home/bot/aptdir
+fi
 
 DEFAULT_OPTS="-qq"
 

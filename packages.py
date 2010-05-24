@@ -1,7 +1,8 @@
 #!/usr/bin/env python
+# -*- Encoding: utf-8 -*-
 ###
 # Copyright (c) 2006-2007 Dennis Kaarsemaker
-# Copyright (c) 2008-2010 Terence Simpson <tsimpson@ubuntu.com>
+# Copyright (c) 2008-2010 Terence Simpson
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of version 2 of the GNU General Public License as
@@ -13,6 +14,7 @@
 # GNU General Public License for more details.
 #
 ###
+
 import exceptions
 import warnings
 warnings.filterwarnings("ignore", "apt API not stable yet", exceptions.FutureWarning)
@@ -42,11 +44,12 @@ class Apt:
                                  %%s %%s""" % tuple([self.aptdir]*4)
             self.aptfilecommand = """apt-file -s %s/%%s.list -c %s/apt-file/%%s -l search %%s""" % (self.aptdir, self.aptdir)
 
-    def find(self, pkg, checkdists, filelookup=True):
+    def find(self, pkg, chkdistro, filelookup=True):
         _pkg = ''.join([x for x in pkg.strip().split(None,1)[0] if x.isalnum() or x in '.-_+'])
-        distro = checkdists
         if len(pkg.strip().split()) > 1:
             distro = ''.join([x for x in pkg.strip().split(None,2)[1] if x.isalnum() or x in '.-_+'])
+        if not distro:
+            distro = chkdistro
         if distro not in self.distros:
             return "%s is not a valid distribution: %s" % (distro, ", ".join(self.distros))
         pkg = _pkg
@@ -57,10 +60,10 @@ class Apt:
                 data = commands.getoutput(self.aptfilecommand % (distro, distro, pkg)).split()
                 if data:
                     if data[0] == 'sh:': # apt-file isn't installed
-                      self.log.error("apt-file is not installed")
+                      self.log.error("PackageInfo/packages: apt-file is not installed")
                       return "Please use http://packages.ubuntu.com/ to search for files"
                     if data[0] == 'E:': # No files in the cache dir
-                      self.log.error("Please run the 'update_apt_file' script")
+                      self.log.error("PackageInfo/packages: Please run the 'update_apt_file' script")
                       return "Cache out of date, please contact the administrator"
                     if data[0] == "Use" and data[1] == "of":
                         url = "http://packages.ubuntu.com/search?searchon=contents&keywords=%s&mode=&suite=%s&arch=any" % (urllib.quote(pkg), distro)
@@ -76,68 +79,63 @@ class Apt:
         else:
             return "Found: %s" % ', '.join(pkgs[:5])
 
-    def info(self, pkg, checkdists):
+    def info(self, pkg, chkdistro):
         if not pkg.strip():
             return ''
         _pkg = ''.join([x for x in pkg.strip().split(None,1)[0] if x.isalnum() or x in '.-_+'])
-        distro = checkdists
         if len(pkg.strip().split()) > 1:
             distro = ''.join([x for x in pkg.strip().split(None,2)[1] if x.isalnum() or x in '-._+'])
         if not distro:
-            distro = checkdists
+            distro = chkdistro
         if distro not in self.distros:
             return "%r is not a valid distribution: %s" % (distro, ", ".join(self.distros))
 
-        checkdists = distro
-
         pkg = _pkg
 
-        for distro in [checkdists]:
-            data = commands.getoutput(self.aptcommand % (distro, distro, distro, 'show', pkg))
-            data2 = commands.getoutput(self.aptcommand % (distro, distro, distro, 'showsrc', pkg))
-            if not data or 'E: No packages found' in data:
+        data = commands.getoutput(self.aptcommand % (distro, distro, distro, 'show', pkg))
+        data2 = commands.getoutput(self.aptcommand % (distro, distro, distro, 'showsrc', pkg))
+        if not data or 'E: No packages found' in data:
+            return 'Package %s does not exist in %s' % (pkg, distro)
+        maxp = {'Version': '0'}
+        packages = [x.strip() for x in data.split('\n\n')]
+        for p in packages:
+            if not p.strip():
                 continue
-            maxp = {'Version': '0'}
-            packages = [x.strip() for x in data.split('\n\n')]
-            for p in packages:
-                if not p.strip():
-                    continue
-                parser = FeedParser.FeedParser()
-                parser.feed(p)
-                p = parser.close()
-                if type(p) == type(""):
-                    self.log.error("apt returned an error, do you have the deb-src URLs in %s.list?" % distro)
-                    return "Package lookup faild"
-                if not p.get("Version", None):
-                    continue
-                if apt.VersionCompare(maxp['Version'], p['Version']) < 0:
-                    maxp = p
-                del parser
-            maxp2 = {'Version': '0'}
-            packages2 = [x.strip() for x in data2.split('\n\n')]
-            for p in packages2:
-                if not p.strip():
-                    continue
-                parser = FeedParser.FeedParser()
-                parser.feed(p)
-                p = parser.close()
-                if type(p) == type(""):
-                    self.log.error("apt returned an error, do you have the deb-src URLs in %s.list?" % distro)
-                    return "Package lookup faild"
-                if not p['Version']:
-                    continue
-                if apt.VersionCompare(maxp2['Version'], p['Version']) < 0:
-                    maxp2 = p
-                del parser
-            archs = ''
-            if maxp2.has_key('Architecture'):
-                if maxp2['Architecture'] not in ('all','any'):
-                    archs = ' (Only available for %s)' % maxp2['Architecture']
-            maxp["Distrobution"] = distro
-            return("%s (source: %s): %s. In component %s, is %s. Version %s (%s), package size %s kB, installed size %s kB%s" %
-                   (maxp['Package'], maxp['Source'] or maxp['Package'], maxp['Description'].split('\n')[0], component(maxp['Section']),
-                    maxp['Priority'], maxp['Version'], distro, int(maxp['Size'])/1024, maxp['Installed-Size'], archs))
-        return 'Package %s does not exist in %s' % (pkg, checkdists)
+            parser = FeedParser.FeedParser()
+            parser.feed(p)
+            p = parser.close()
+            if type(p) == type(""):
+                self.log.error("PackageInfo/packages: apt returned an error, do you have the deb-src URLs in %s.list?" % distro)
+                return "Package lookup faild"
+            if not p.get("Version", None):
+                continue
+            if apt.VersionCompare(maxp['Version'], p['Version']) < 0:
+                maxp = p
+            del parser
+        maxp2 = {'Version': '0'}
+        packages2 = [x.strip() for x in data2.split('\n\n')]
+        for p in packages2:
+            if not p.strip():
+                continue
+            parser = FeedParser.FeedParser()
+            parser.feed(p)
+            p = parser.close()
+            if type(p) == type(""):
+                self.log.error("PackageInfo/packages: apt returned an error, do you have the deb-src URLs in %s.list?" % distro)
+                return "Package lookup faild"
+            if not p['Version']:
+                continue
+            if apt.VersionCompare(maxp2['Version'], p['Version']) < 0:
+                maxp2 = p
+            del parser
+        archs = ''
+        if maxp2.has_key('Architecture'):
+            if maxp2['Architecture'] not in ('all','any'):
+                archs = ' (Only available for %s)' % maxp2['Architecture']
+        maxp["Distrobution"] = distro
+        return("%s (source: %s): %s. In component %s, is %s. Version %s (%s), package size %s kB, installed size %s kB%s" %
+               (maxp['Package'], maxp['Source'] or maxp['Package'], maxp['Description'].split('\n')[0], component(maxp['Section']),
+                maxp['Priority'], maxp['Version'], distro, int(maxp['Size'])/1024, maxp['Installed-Size'], archs))
                        
 # Simple test
 if __name__ == "__main__":
