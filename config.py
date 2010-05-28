@@ -24,9 +24,11 @@ def configure(advanced):
     def makeSource(release):
         return """deb http://archive.ubuntu.com/ubuntu/ %s main restricted universe multiverse
 deb-src http://archive.ubuntu.com/ubuntu/ %s main restricted universe multiverse
-"""
+""" % (release, release)
+#"""
 
     from supybot.questions import output, expect, something, yn
+    import commands
     import os
 
     def anything(prompt, default=None):
@@ -41,12 +43,12 @@ deb-src http://archive.ubuntu.com/ubuntu/ %s main restricted universe multiverse
     if enabled and advanced:
         prefixchar = something("Which prefix character should be bot respond to?", default=PackageInfo.prefixchar._default)
         defaultRelease = something("What should be the default distrobution when not specified?", default=PackageInfo.defaultRelease._default)
-        aptdir = something("Which directory should be used for the apt cache when looking up packages?", default=supybot.directories.data.dirize('aptdir'))
+        aptdir = something("Which directory should be used for the apt cache when looking up packages?", default=conf.supybot.directories.data.dirize('aptdir'))
 
         # People tend to thing this should be /var/cache/apt
-        while aptdir.beginswith('/var'):
+        while aptdir.startswith('/var'):
             output("NO! Do not use your systems apt directory")
-            aptdir = something("Which directory should be used for the apt cache when looking up packages?", default=supybot.directories.data.dirize('aptdir'))
+            aptdir = something("Which directory should be used for the apt cache when looking up packages?", default=conf.supybot.directories.data.dirize('aptdir'))
 
     else:
         prefixchar = PackageInfo.prefixchar._default
@@ -66,11 +68,17 @@ deb-src http://archive.ubuntu.com/ubuntu/ %s main restricted universe multiverse
 
     default_dists.add(defaultRelease)
 
-    for release in default_dist:
+    ## Create the aptdir
+    try:
+        os.makedirs(aptdir)
+    except OSError: # The error number would be OS dependant (17 on Linux 2.6, ?? on others). So just pass on this
+        pass
+
+    for release in default_dists:
         filename = os.path.join(aptdir, "%s.list" % release)
         try:
             output("Creating %s" % filename)
-            fd = fileutils.open(filename)
+            fd = open(filename, 'wb')
             fd.write("# Apt sources list for Ubuntu %s\n" % release)
             fd.write(makeSource(release))
             fd.write(makeSource(release + '-security'))
@@ -78,30 +86,27 @@ deb-src http://archive.ubuntu.com/ubuntu/ %s main restricted universe multiverse
             fd.close()
 
             for sub in ('backports', 'proposed'):
-                release = "%s-%s" % sub
-                filename = os.path.join(aptdir, "%s.list" % release)
+                sub_release = "%s-%s" % (release, sub)
+                filename = os.path.join(aptdir, "%s.list" % sub_release)
                 output("Creating %s" % filename)
-                fd = fileutils.open(filename)
+                fd = open(filename, 'wb')
                 fd.write("# Apt sources list for Ubuntu %s\n" % release)
-                fd.write(makeSource(release))
+                fd.write(makeSource(sub_release))
                 fd.close()
         except Exception, e:
             output("Error writing to %r: %r (%s)" % (filename, str(e), type(e)))
 
     if yn("In order for the plugin to use these sources, you must run the 'update_apt' script, do you want to do this now?", default=True):
         os.environ['DIR'] = aptdir # the update_apt script checks if DIR is set and uses it if it is
-        (e, o) = commands.getstatusoutput(update_apt)
-        if e != 0:
+        if commands.getstatus(update_apt) != 0:
             output("There was an error running update_apt, please run '%s -v' to get more information" % update_apt)
 
-    (e, o) = commands.statusoutput('which apt-file')
-    if e != 0:
+    if commands.getstatusoutput('which apt-file') != 0:
         output("You need to install apt-file in order to use the !find command of this plugin")
     else:
         if yn("In order for the !find command to work, you must run the 'update_apt_file' script, do you want to do this now?", default=True):
             os.environ['DIR'] = aptdir # the update_apt_file script checks if DIR is set and uses it if it is
-            (e, o) = commands.getstatusoutput(update_apt_file)
-            if e != 0:
+            if commands.getstatusoutput(update_apt_file) != 0:
                 output("There was an error running update_apt_file, please run '%s -v' to get more information" % update_apt_file)
 
 PackageInfo = conf.registerPlugin('PackageInfo')
