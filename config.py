@@ -26,8 +26,14 @@ def configure(advanced):
 deb-src http://archive.ubuntu.com/ubuntu/ %s main restricted universe multiverse
 """
 
-    from supybot.questions import output, expect, anything, something, yn
+    from supybot.questions import output, expect, something, yn
     import os
+
+    def anything(prompt, default=None):
+        """Because supybot is pure fail"""
+        from supybot.questions import expect
+        return expect(prompt, [], default=default)
+
     conf.registerPlugin('PackageInfo', True)
 
     enabled = yn("Enable this plugin in all channels?", default=True)
