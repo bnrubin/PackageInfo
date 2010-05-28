@@ -53,7 +53,7 @@ deb-src http://archive.ubuntu.com/ubuntu/ %s main restricted universe multiverse
     else:
         prefixchar = PackageInfo.prefixchar._default
         defaultRelease = PackageInfo.defaultRelease._default
-        aptdir = supybot.directories.data.dirize('aptdir')
+        aptdir = conf.supybot.directories.data.dirize('aptdir')
 
 
     PackageInfo.enabled.setValue(enabled)
