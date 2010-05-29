@@ -36,7 +36,7 @@ deb-src http://archive.ubuntu.com/ubuntu/ %s main restricted universe multiverse
         from supybot.questions import expect
         return expect(prompt, [], default=default)
 
-    conf.registerPlugin('PackageInfo', True)
+    PackageInfo = conf.registerPlugin('PackageInfo', True)
 
     enabled = yn("Enable this plugin in all channels?", default=True)
 
