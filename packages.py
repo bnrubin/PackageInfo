@@ -68,14 +68,14 @@ class Apt:
                     if data[0] == "Use" and data[1] == "of":
                         url = "http://packages.ubuntu.com/search?searchon=contents&keywords=%s&mode=&suite=%s&arch=any" % (urllib.quote(pkg), distro)
                         return url
-                    if len(data) > 5:
-                        return "File %s found in %s (and %d others)" % (pkg, ', '.join(data[:5]), len(data)-5)
+                    if len(data) > 10:
+                        return "File %s found in %s (and %d others) http://packages.ubuntu.com/search?searchon=contents&keywords=%s&mode=&suite=%s&arch=any" % (pkg, ', '.join(data[:10]), len(data)-10, urllib.quote(pkg), distro)
                     return "File %s found in %s" % (pkg, ', '.join(data))
                 return 'Package/file %s does not exist in %s' % (pkg, distro)
             return "No packages matching '%s' could be found" % pkg
         pkgs = [x.split()[0] for x in data.split('\n')]
-        if len(pkgs) > 5:
-            return"Found: %s (and %d others)" % (', '.join(pkgs[:5]), len(pkgs) -5)
+        if len(pkgs) > 10:
+            return "Found: %s (and %d others) http://packages.ubuntu.com/search?keywords=%s&searchon=names&suite=%s&section=all" % (', '.join(pkgs[:10]), len(pkgs)-10, urllib.quote(pkg), distro)
         else:
             return "Found: %s" % ', '.join(pkgs[:5])
 
