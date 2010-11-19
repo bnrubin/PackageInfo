@@ -83,10 +83,9 @@ class Apt:
         if not pkg.strip():
             return ''
         _pkg = ''.join([x for x in pkg.strip().split(None,1)[0] if x.isalnum() or x in '.-_+'])
+        distro = chkdistro
         if len(pkg.strip().split()) > 1:
             distro = ''.join([x for x in pkg.strip().split(None,2)[1] if x.isalnum() or x in '-._+'])
-        if not distro:
-            distro = chkdistro
         if distro not in self.distros:
             return "%r is not a valid distribution: %s" % (distro, ", ".join(self.distros))
 
