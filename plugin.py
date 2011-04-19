@@ -123,7 +123,7 @@ class PackageInfo(callbacks.Plugin):
         if rest:
             if rest[0] == '|':
                 try:
-                    target = rest:
+                    target = rest
                     while target[0] == '|':
                         target = target[1:].strip()
                     if target.lower() == "me":
@@ -168,7 +168,7 @@ class PackageInfo(callbacks.Plugin):
         if rest:
             if rest[0] == '|':
                 try:
-                    target = rest:
+                    target = rest
                     while target[0] == '|':
                         target = target[1:].strip()
                     if target.lower() == "me":
