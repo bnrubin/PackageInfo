@@ -180,6 +180,8 @@ class PackageInfo(callbacks.Plugin):
                     pass
             elif rest[0] == '>':
                 try:
+                    while rest[0] == '>':
+                        rest = rest[1:].strip()
                     targets = [_ for _ in rest.split() if _] # Split and discard empty parts
                     target = stripNick(targets[0]) # Take the first "nick" and strip off bad chars
                     if target.lower() == "me":
