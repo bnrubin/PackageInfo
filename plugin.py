@@ -78,7 +78,8 @@ class PackageInfo(callbacks.Plugin):
         return (before, [])
 
     def __getRelease(self, irc, release, channel, doError=True):
-        release = release.strip()
+        if release:
+            release = release.strip()
         defaultRelease = self.registryValue("defaultRelease", channel)
         if not defaultRelease:
             if doError:
