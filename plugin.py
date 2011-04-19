@@ -35,6 +35,12 @@ def get_user(msg):
         return False
     return user
 
+_stripNickChars = """!"#$%&'()*+,./:;<=>?@~"""
+def stripNick(nick):
+    while nick and nick[-1] in _stripNickChars:
+        nick = nick[:-1]
+    return nick
+
 ## Taken from Encyclopedia ##
 # Repeat filtering message queue
 msgcache = {}
@@ -72,6 +78,7 @@ class PackageInfo(callbacks.Plugin):
         return (before, [])
 
     def __getRelease(self, irc, release, channel, doError=True):
+        release = release.strip()
         defaultRelease = self.registryValue("defaultRelease", channel)
         if not defaultRelease:
             if doError:
@@ -115,7 +122,9 @@ class PackageInfo(callbacks.Plugin):
         if rest:
             if rest[0] == '|':
                 try:
-                    target = rest.split()[1]
+                    target = rest:
+                    while target[0] == '|':
+                        target = target[:1].strip()
                     if target.lower() == "me":
                         target = msg.nick
                     queue(irc, reply_target, "%s: %s" % (target, reply))
@@ -125,9 +134,12 @@ class PackageInfo(callbacks.Plugin):
                     pass
             elif rest[0] == '>':
                 try:
-                    target = rest.split()[1]
+                    targets = [_ for _ in rest.split() if _] # Split and discard empty parts
+                    target = stripNick(targets[0]) # Take the first "nick" and strip off bad chars
                     if target.lower() == "me":
-                        target = msg.nick
+                        target = msg.nick # redirect
+                    if not target: # Throw error
+                        raise Exception, 'No target'
                     queue(irc, target, "<%s> wants you to know: %s" % (msg.nick, reply))
                     return
                 except Exception, e:
@@ -153,7 +165,9 @@ class PackageInfo(callbacks.Plugin):
         if rest:
             if rest[0] == '|':
                 try:
-                    target = rest.split()[1]
+                    target = rest:
+                    while target[0] == '|':
+                        target = target[:1].strip()
                     if target.lower() == "me":
                         target = msg.nick
                     queue(irc, reply_target, "%s: %s" % (target, reply))
@@ -163,9 +177,12 @@ class PackageInfo(callbacks.Plugin):
                     pass
             elif rest[0] == '>':
                 try:
-                    target = rest.split()[1]
+                    targets = [_ for _ in rest.split() if _] # Split and discard empty parts
+                    target = stripNick(targets[0]) # Take the first "nick" and strip off bad chars
                     if target.lower() == "me":
-                        target = msg.nick
+                        target = msg.nick # redirect
+                    if not target: # Throw error
+                        raise Exception, 'No target'
                     queue(irc, target, "<%s> wants you to know: %s" % (msg.nick, reply))
                     return
                 except Exception, e:
