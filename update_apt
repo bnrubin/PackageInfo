@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
 
+# Set DIR to the same value as supybot.plugins.PackageInfo.aptdir
 if [ -z "$DIR" ]; then
     DIR=/home/bot/aptdir
 fi
 
+# Be quiet bt default
 DEFAULT_OPTS="-qq"
 
+# Check command-line arguments
 while [ "x$1" != "x" ]; do
     case "$1" in
         -v|--verbose)
@@ -27,7 +30,7 @@ while [ "x$1" != "x" ]; do
             exit 1
             ;;
         *)
-            echo "This script takes no arguments" >&2
+            echo "This script takes no non-argument parameters" >&2
             exit 1
             ;;
     esac

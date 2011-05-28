@@ -43,17 +43,17 @@ deb-src http://archive.ubuntu.com/ubuntu/ %s main restricted universe multiverse
     if enabled and advanced:
         prefixchar = something("Which prefix character should be bot respond to?", default=PackageInfo.prefixchar._default)
         defaultRelease = something("What should be the default distrobution when not specified?", default=PackageInfo.defaultRelease._default)
-        aptdir = something("Which directory should be used for the apt cache when looking up packages?", default=conf.supybot.directories.data.dirize('aptdir'))
+        aptdir = something("Which directory should be used for the apt cache when looking up packages?", default=PackageInfo.aptdir._default)
 
         # People tend to thing this should be /var/cache/apt
-        while aptdir.startswith('/var'):
+        while aptdir.startswith('/var'): #NOTE: This is not a good hack. Maybe just blacklist /var/cache/apt (or use apt to report back the cache dir)
             output("NO! Do not use your systems apt directory")
-            aptdir = something("Which directory should be used for the apt cache when looking up packages?", default=conf.supybot.directories.data.dirize('aptdir'))
+            aptdir = something("Which directory should be used for the apt cache when looking up packages?", default=PackageInfo.aptdir._default)
 
     else:
         prefixchar = PackageInfo.prefixchar._default
         defaultRelease = PackageInfo.defaultRelease._default
-        aptdir = conf.supybot.directories.data.dirize('aptdir')
+        aptdir = PackageInfo.aptdir._default
 
 
     PackageInfo.enabled.setValue(enabled)
@@ -61,7 +61,7 @@ deb-src http://archive.ubuntu.com/ubuntu/ %s main restricted universe multiverse
     PackageInfo.prefixchar.setValue(prefixchar)
     PackageInfo.defaultRelease.setValue(defaultRelease)
 
-    default_dists = set(['hardy', 'jaunty', 'karmic', 'lucid', 'maveric'])
+    default_dists = set(['dapper', 'hardy', 'lucid', 'maveric', 'natty', 'oneiric'])
     pluginDir = os.path.abspath(os.path.dirname(__file__))
     update_apt = os.path.join(pluginDir, 'update_apt')
     update_apt_file = os.path.join(pluginDir, 'update_apt_file')
@@ -115,7 +115,7 @@ conf.registerChannelValue(PackageInfo, 'enabled',
 conf.registerChannelValue(PackageInfo, 'prefixchar',
     conf.ValidPrefixChars('!', "Character the bot will respond to"))
 conf.registerChannelValue(PackageInfo, 'defaultRelease',
-    registry.String('lucid', "Default release to use when none is specified"))
+    registry.String('natty', "Default release to use when none is specified"))
 conf.registerGlobalValue(PackageInfo, 'aptdir',
     conf.Directory(conf.supybot.directories.data.dirize('aptdir'), "Path to the apt directory", private=True))
 
