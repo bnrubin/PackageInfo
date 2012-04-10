@@ -45,7 +45,8 @@ class Apt:
             self.aptfilecommand = """apt-file -s %s/%%s.list -c %s/apt-file/%%s -l search %%s""" % (self.aptdir, self.aptdir)
 
     def find(self, pkg, chkdistro, filelookup=True):
-        _pkg = ''.join([x for x in pkg.strip().split(None,1)[0] if x.isalnum() or x in '.-_+'])
+        _pkg = ''.join([x for x in pkg.strip().split(None,1)[0] if x.isalnum() or x in '.-_+/'])
+        distro = ''
         if len(pkg.strip().split()) > 1:
             distro = ''.join([x for x in pkg.strip().split(None,2)[1] if x.isalnum() or x in '.-_+'])
         if not distro:
@@ -129,8 +130,17 @@ class Apt:
             del parser
         archs = ''
         if maxp2.has_key('Architecture'):
-            if maxp2['Architecture'] not in ('all','any'):
-                archs = ' (Only available for %s)' % maxp2['Architecture']
+            archs = [_.strip() for _ in maxp2['Architecture'].split() if _.strip()]
+            for arch in archs:
+                if arch not in ('any', 'all'):
+                    continue
+                else:
+                    archs = ''
+                    break
+
+            if archs:
+                archs = ' (Only available for %s)' % '; '.join(archs)
+
         maxp["Distrobution"] = distro
         return("%s (source: %s): %s. In component %s, is %s. Version %s (%s), package size %s kB, installed size %s kB%s" %
                (maxp['Package'], maxp['Source'] or maxp['Package'], maxp['Description'].split('\n')[0], component(maxp['Section']),
