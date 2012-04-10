@@ -25,6 +25,15 @@ def component(arg):
     if '/' in arg: return arg[:arg.find('/')]
     return 'main'
 
+def description(pkg):
+    if not pkg:
+        return None
+    if pkg.has_key('Description-en'):
+        return pkg['Description-en'].split('\n')[0]
+    elif pkg.has_key('Description'):
+        return pkg['Description'].split('\n')[0]
+    return None
+
 class Apt:
     def __init__(self, plugin):
         self.aptdir = plugin.registryValue('aptdir')
@@ -38,10 +47,11 @@ class Apt:
             self.aptcommand = """apt-cache\\
                                  -o"Dir::State::Lists=%s/%%s"\\
                                  -o"Dir::etc::sourcelist=%s/%%s.list"\\
+                                 -o"Dir::etc::SourceParts=%s/%%s.list.d"\\
                                  -o"Dir::State::status=%s/%%s.status"\\
                                  -o"Dir::Cache=%s/cache"\\
                                  -o"APT::Architecture=i386"\\
-                                 %%s %%s""" % tuple([self.aptdir]*4)
+                                 %%s %%s""" % tuple([self.aptdir]*5)
             self.aptfilecommand = """apt-file -s %s/%%s.list -c %s/apt-file/%%s -l search %%s""" % (self.aptdir, self.aptdir)
 
     def find(self, pkg, chkdistro, filelookup=True):
@@ -92,8 +102,8 @@ class Apt:
 
         pkg = _pkg
 
-        data = commands.getoutput(self.aptcommand % (distro, distro, distro, 'show', pkg))
-        data2 = commands.getoutput(self.aptcommand % (distro, distro, distro, 'showsrc', pkg))
+        data = commands.getoutput(self.aptcommand % (distro, distro, distro, distro, 'show', pkg))
+        data2 = commands.getoutput(self.aptcommand % (distro, distro, distro, distro, 'showsrc', pkg))
         if not data or 'E: No packages found' in data:
             return 'Package %s does not exist in %s' % (pkg, distro)
         maxp = {'Version': '0'}
@@ -143,7 +153,7 @@ class Apt:
 
         maxp["Distrobution"] = distro
         return("%s (source: %s): %s. In component %s, is %s. Version %s (%s), package size %s kB, installed size %s kB%s" %
-               (maxp['Package'], maxp['Source'] or maxp['Package'], maxp['Description'].split('\n')[0], component(maxp['Section']),
+               (maxp['Package'], maxp['Source'] or maxp['Package'], description(maxp), component(maxp['Section']),
                 maxp['Priority'], maxp['Version'], distro, int(maxp['Size'])/1024, maxp['Installed-Size'], archs))
                        
 # Simple test
