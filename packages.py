@@ -65,10 +65,10 @@ class Apt:
             return "%s is not a valid distribution: %s" % (distro, ", ".join(self.distros))
         pkg = _pkg
 
-        data = commands.getoutput(self.aptcommand % (distro, distro, distro, 'search -n', pkg))
+        data = commands.getoutput(self.aptcommand % (distro, distro, distro, distro, 'search -n', pkg))
         if not data:
             if filelookup:
-                data = commands.getoutput(self.aptfilecommand % (distro, distro, pkg)).split()
+                data = commands.getoutput(self.aptfilecommand % (distro, distro, distro, pkg)).split()
                 if data:
                     if data[0] == 'sh:': # apt-file isn't installed
                       self.log.error("PackageInfo/packages: apt-file is not installed")
