@@ -201,6 +201,7 @@ class PackageInfo(callbacks.Plugin):
     def privmsg(self, irc, msg, user):
         channel = self.__getChannel(msg.args[0])
         text = self.space_re.subn(' ', msg.args[1].strip())[0]
+        my_commands = self.listCommands()
         if text[0] == self.registryValue("prefixchar"):
             text = text[1:].strip()
         if user and text[0] in list(conf.supybot.reply.whenAddressedBy.chars()):
