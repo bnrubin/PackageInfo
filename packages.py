@@ -52,7 +52,7 @@ class Apt:
                                  -o"Dir::Cache=%s/cache"\\
                                  -o"APT::Architecture=i386"\\
                                  %%s %%s""" % tuple([self.aptdir]*5)
-            self.aptfilecommand = """apt-file -s %s/%%s.list -c %s/apt-file/%%s -l search %%s""" % (self.aptdir, self.aptdir)
+            self.aptfilecommand = """apt-file -s %s/%%s.list -c %s/apt-file/%%s -l -a i386 search %%s""" % (self.aptdir, self.aptdir)
 
     def find(self, pkg, chkdistro, filelookup=True):
         _pkg = ''.join([x for x in pkg.strip().split(None,1)[0] if x.isalnum() or x in '.-_+/'])
