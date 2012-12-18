@@ -60,6 +60,7 @@ update_apt() {
         -o="Dir::State::Status=$apt_dir/$dist.status" \
         -o="Dir::Cache=$apt_dir/cache" \
         -o="Dir::Etc::SourceList=$apt_dir/$dist.list" \
+        -o="Dir::Etc::SourceParts=\"\"" \
         update
 
     return $?
