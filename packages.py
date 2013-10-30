@@ -119,7 +119,7 @@ class Apt:
                 return "Package lookup faild"
             if not p.get("Version", None):
                 continue
-            if apt.VersionCompare(maxp['Version'], p['Version']) < 0:
+            if apt.apt_pkg.version_compare(maxp['Version'], p['Version']) < 0:
                 maxp = p
             del parser
         maxp2 = {'Version': '0'}
@@ -135,7 +135,7 @@ class Apt:
                 return "Package lookup faild"
             if not p['Version']:
                 continue
-            if apt.VersionCompare(maxp2['Version'], p['Version']) < 0:
+            if apt.apt_pkg.version_compare(maxp2['Version'], p['Version']) < 0:
                 maxp2 = p
             del parser
         archs = ''
