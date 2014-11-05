@@ -106,7 +106,7 @@ class Apt:
         data2 = commands.getoutput(self.aptcommand % (distro, distro, distro, distro, 'showsrc', pkg))
         if not data or 'E: No packages found' in data:
             return 'Package %s does not exist in %s' % (pkg, distro)
-        maxp = {'Version': '0'}
+        maxp = {'Version': '0~'}
         packages = [x.strip() for x in data.split('\n\n')]
         for p in packages:
             if not p.strip():
@@ -119,10 +119,10 @@ class Apt:
                 return "Package lookup faild"
             if not p.get("Version", None):
                 continue
-            if apt.apt_pkg.version_compare(maxp['Version'], p['Version']) < 0:
+            if apt.apt_pkg.version_compare(maxp['Version'], p['Version']) <= 0:
                 maxp = p
             del parser
-        maxp2 = {'Version': '0'}
+        maxp2 = {'Version': '0~'}
         packages2 = [x.strip() for x in data2.split('\n\n')]
         for p in packages2:
             if not p.strip():
@@ -135,7 +135,7 @@ class Apt:
                 return "Package lookup faild"
             if not p['Version']:
                 continue
-            if apt.apt_pkg.version_compare(maxp2['Version'], p['Version']) < 0:
+            if apt.apt_pkg.version_compare(maxp2['Version'], p['Version']) <= 0:
                 maxp2 = p
             del parser
         archs = ''
